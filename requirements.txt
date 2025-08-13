@@ -1,0 +1,14 @@
+# App/UI
+streamlit>=1.31
+
+# Dados
+pandas>=2.1
+numpy>=1.26
+
+# Gráficos
+altair>=5.0
+matplotlib>=3.8
+
+# ML (caso use os blocos de clusterização/classificação)
+scikit-learn>=1.4
+scipy>=1.12
