@@ -85,33 +85,16 @@ for c in cols:
     df[c] = pd.to_numeric(df[c], errors='coerce')
 
 
-# garante que as colunas de notas estão definidas e numéricas
-cols = [c for c in df.columns if str(c).lstrip().startswith('[')]
-for c in cols:
-    df[c] = pd.to_numeric(df[c], errors='coerce')
-
-# AGRUPADO POR CHAVE + MÉDIA POR CHAVE
+# gera um ranking separado para cada chave, exibindo a matrícula
 for chave in ['linhagerencia', 'squadtime', 'papel', 'funcao']:
-    if chave in df.columns:
-        # 1) Ranking por pergunta (média por pergunta dentro da chave)
-        por_pergunta = (
-            df.groupby(chave, dropna=False)[cols].mean().reset_index()
-              .melt(id_vars=[chave], var_name='pergunta', value_name='media')
-              .sort_values([chave, 'media'], ascending=[True, False])
+    if chave in df.columns and 'matricula' in df.columns:
+        ranking = (
+            df.groupby([chave, 'matricula'], dropna=False)[cols].mean().reset_index()
+              .melt(id_vars=[chave, 'matricula'], var_name='pergunta', value_name='media')
+              .sort_values([chave, 'matricula', 'media'], ascending=[True, True, False])
         )
-        st.subheader(f"🏆 Ranking por {chave} (média por pergunta)")
-        st.dataframe(por_pergunta, use_container_width=True)
-
-        # 2) MÉDIA GERAL por chave (média de todas as perguntas)
-        media_chave = (
-            df.groupby(chave, dropna=False)[cols].mean()   # média por pergunta no grupo
-              .mean(axis=1)                                 # média geral (todas as perguntas)
-              .reset_index(name='media_geral')
-              .sort_values('media_geral', ascending=False)
-        )
-        st.markdown(f"**📊 Média geral por {chave} (todas as perguntas)**")
-        st.dataframe(media_chave, use_container_width=True)
-
+        st.subheader(f"🏆 Ranking por {chave} (com matrícula)")
+        st.dataframe(ranking, use_container_width=True)
 
 # --- Gráfico: Ranking geral (média por pergunta) agrupado por linhagerencia, squadtime, papel, funcao ---
 st.subheader("📊 Gráfico: Ranking geral (média por pergunta)"
