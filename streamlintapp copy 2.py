@@ -22,7 +22,7 @@ Este app:
 # arquivo merge_matriculas.py
 
 # ========= Upload =========
-st.subheader("1) Merge por Matrículas (Dados gerais do Dashboard e Autopercepção) ")
+st.subheader("1) Merge Matrículas")
 #c_up1 = st.columns(1)
 #with c_up1:
 arq_merge = st.file_uploader("📤 merge_matriculas", type=["csv", "CSV"], key="auto")
@@ -31,9 +31,7 @@ arq_merge = st.file_uploader("📤 merge_matriculas", type=["csv", "CSV"], key="
 if arq_merge is None:
     st.error("Por favor, faça o upload do arquivo 'merge_matriculas.csv'.")
     st.stop()
-st.subheader("🔍 Análise e Resumo por Chave ( arquivo: merge_matriculas)")
-st.write("**A duplicação é devido ao merge dos arquivos autopercepção e  dados gerais   **")
-
+st.subheader("🔍 Análise e Resumo por Chave")
 #carrega o CSV do merge
 #df_merge = pd.read_csv("merge_matriculas.csv", dtype=str)
 df_merge = pd.read_csv(arq_merge, dtype=str)
@@ -50,38 +48,6 @@ df.columns = df.columns.str.strip().str.lower()
 #df_grouped = df.groupby("matricula").mean(numeric_only=True).reset_index()
 
 st.dataframe(df.sort_values("matricula"), use_container_width=True)
-
-#####################################################
-
-
-df.columns = df.columns.str.strip().str.lower()
-
-# Identifica colunas de perguntas
-cols = [c for c in df.columns if str(c).lstrip().startswith('[')]
-for c in cols:
-    df[c] = pd.to_numeric(df[c], errors='coerce')
-
-# Verifica se a coluna 'matricula' existe
-if 'matricula' not in df.columns:
-    st.error("A coluna 'matricula' não foi encontrada no arquivo.")
-    st.stop()
-
-# Calcula a média por pergunta para cada matrícula
-media_por_matricula = df.groupby('matricula')[cols].mean().round(2)
-
-st.subheader("📋 Média por pergunta para cada matrícula")
-st.dataframe(media_por_matricula, use_container_width=True)
-
-
-
-
-
-
-
-
-
-#######################################################
-
 
 # 1) pega só as colunas de notas (nomes que começam com '[')
 cols = [c for c in df.columns if str(c).lstrip().startswith('[')]
@@ -333,94 +299,21 @@ if keys_disp:
 # --- Gráfico: Top matrículas no grupo selecionado (média global das notas) ---
 if 'matricula' in df.columns and len(valores) > 0:
     df_grp = df.loc[df[chave] == valor].copy()
-    #if not df_grp.empty:
-     #   score_matricula = (
-     #       df_grp.groupby('matricula')[cols].mean().mean(axis=1).sort_values(ascending=False)
-     #   )
+    if not df_grp.empty:
+        score_matricula = (
+            df_grp.groupby('matricula')[cols].mean().mean(axis=1).sort_values(ascending=False)
+        )
 
-      #  top_m = min(15, len(score_matricula))
-      #  st.markdown(f"### 🧑‍💼 Top matrículas — {chave}: **{valor}**")
-      #  fig3, ax3 = plt.subplots(figsize=(8, 0.4*top_m + 1))
-      #  plot3 = score_matricula.head(top_m).iloc[::-1]
-      #  ax3.barh(plot3.index.astype(str), plot3.values)
-      #  ax3.set_xlabel("Média geral (todas as perguntas)")
-      #  ax3.set_ylabel("Matrícula")
-      #  ax3.set_title(f"Top {top_m} matrículas — {chave}: {valor}")
-      #  plt.tight_layout()
-      #  st.pyplot(fig3)
-      
-      # Calcula a média geral por matrícula
-    score_matricula = (
-        df_grp.groupby('matricula')[cols].mean().mean(axis=1).sort_values(ascending=False)
-    )
-
-    if score_matricula.empty:
-        st.info(f"Sem matrículas em {chave}: {valor}.")
-    else:
         top_m = min(15, len(score_matricula))
-
-    st.markdown(f"### 🧑‍💼 Top matrículas — {chave}: **{valor}**")
-
-    # Preparar o DataFrame para o Altair
-    plot_df = score_matricula.head(top_m).iloc[::-1].reset_index()
-    plot_df.columns = ['matricula', 'media_geral']
-
-    chart = (
-        alt.Chart(plot_df)
-        .mark_bar()
-        .encode(
-            x=alt.X('media_geral:Q', title='Média geral (todas as perguntas)'),
-            y=alt.Y('matricula:N', sort='-x', title='Matrícula'),
-            tooltip=['matricula', 'media_geral']
-        )
-        .properties(
-            width=600,
-            height=25 * top_m,
-            title=f"Top {top_m} matrículas — {chave}: {valor}"
-        )
-    )
-
-    st.altair_chart(chart, use_container_width=True)
-
-
-
-###############################################################################################
-
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-
-
-
-df.columns = df.columns.str.strip().str.lower()
-
-# Identifica colunas de perguntas
-cols = [c for c in df.columns if str(c).lstrip().startswith('[')]
-for c in cols:
-    df[c] = pd.to_numeric(df[c], errors='coerce')
-
-# Seleção da pergunta
-pergunta = st.selectbox("🔍 Selecione a pergunta", cols)
-
-# Agrupadores
-agrupadores = ['linhagerencia', 'squadtime', 'papel', 'funcao']
-
-# Geração dos rankings
-for chave in agrupadores:
-    if chave in df.columns:
-        df[chave] = df[chave].fillna(f'Sem {chave}').astype(str).str.strip()
-        media_por_grupo = df.groupby(chave)[pergunta].mean().sort_values(ascending=False)
-
-        st.subheader(f"📌 Média da pergunta '{pergunta}' por {chave}")
-        st.dataframe(media_por_grupo.reset_index().rename(columns={pergunta: 'média'}), use_container_width=True)
-
-        # Gráfico
-       # fig, ax = plt.subplots(figsize=(10, 0.5 * len(media_por_grupo) + 1))
-       # ax.barh(media_por_grupo.index[::-1], media_por_grupo.values[::-1])
-       # ax.set_xlabel("Média")
-       # ax.set_ylabel(chave.capitalize())
-       # ax.set_title(f"Média da pergunta '{pergunta}' por {chave}")
-       # st.pyplot(fig)
+        st.markdown(f"### 🧑‍💼 Top matrículas — {chave}: **{valor}**")
+        fig3, ax3 = plt.subplots(figsize=(8, 0.4*top_m + 1))
+        plot3 = score_matricula.head(top_m).iloc[::-1]
+        ax3.barh(plot3.index.astype(str), plot3.values)
+        ax3.set_xlabel("Média geral (todas as perguntas)")
+        ax3.set_ylabel("Matrícula")
+        ax3.set_title(f"Top {top_m} matrículas — {chave}: {valor}")
+        plt.tight_layout()
+        st.pyplot(fig3)
 
 
 ###############################################################################################
