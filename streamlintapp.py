@@ -31,8 +31,8 @@ arq_merge = st.file_uploader("📤 merge_matriculas", type=["csv", "CSV"], key="
 if arq_merge is None:
     st.error("Por favor, faça o upload do arquivo 'merge_matriculas.csv'.")
     st.stop()
-st.subheader("🔍 Análise e Resumo por Chave ( arquivo: merge_matriculas)")
-st.write("**A duplicação é devido ao merge dos arquivos autopercepção e  dados gerais   **")
+st.subheader("🔍 Análise do merge dos arquivos ( arquivo: merge_matriculas)")
+st.write("**A duplicação é devido ao merge dos arquivos autopercepção e dados gerais   **")
 
 #carrega o CSV do merge
 #df_merge = pd.read_csv("merge_matriculas.csv", dtype=str)
@@ -69,15 +69,43 @@ if 'matricula' not in df.columns:
 # Calcula a média por pergunta para cada matrícula
 media_por_matricula = df.groupby('matricula')[cols].mean().round(2)
 
-st.subheader("📋 Média por pergunta para cada matrícula")
+st.subheader("📋 Nota por pergunta para cada matrícula")
 st.dataframe(media_por_matricula, use_container_width=True)
 
+######################################################
 
 
 
+df.columns = df.columns.str.strip().str.lower()
 
+# Identifica colunas de perguntas
+cols = [c for c in df.columns if str(c).lstrip().startswith('[')]
+for c in cols:
+    df[c] = pd.to_numeric(df[c], errors='coerce')
 
+# Seleção da pergunta
+st.subheader("🔍 Analise de Média por Pergunta segmentado por Linha/Gerência, Squad/Time, Papel e Função")
+pergunta = st.selectbox("🔍 Selecione a pergunta", cols)
 
+# Agrupadores
+agrupadores = ['linhagerencia', 'squadtime', 'papel', 'funcao']
+
+# Geração dos rankings
+for chave in agrupadores:
+    if chave in df.columns:
+        df[chave] = df[chave].fillna(f'Sem {chave}').astype(str).str.strip()
+        media_por_grupo = df.groupby(chave)[pergunta].mean().sort_values(ascending=False)
+
+        st.subheader(f"📌 Média da pergunta '{pergunta}' por {chave}")
+        st.dataframe(media_por_grupo.reset_index().rename(columns={pergunta: 'média'}), use_container_width=True)
+
+        # Gráfico
+       # fig, ax = plt.subplots(figsize=(10, 0.5 * len(media_por_grupo) + 1))
+       # ax.barh(media_por_grupo.index[::-1], media_por_grupo.values[::-1])
+       # ax.set_xlabel("Média")
+       # ax.set_ylabel(chave.capitalize())
+       # ax.set_title(f"Média da pergunta '{pergunta}' por {chave}")
+       # st.pyplot(fig)
 
 
 #######################################################
@@ -106,6 +134,54 @@ ranking_geral = (
 st.write(f"**Ranking geral (média por pergunta):** {len(ranking_geral)} perguntas")
 st.subheader("🏆 Ranking geral (todas as perguntas)")
 st.dataframe(ranking_geral, use_container_width=True)
+
+
+
+st.subheader("🏆 Ranking geral (média por linhagerencia, squadtime, papel, funcao)")
+#ranking_geral = (
+ #   df[cols].mean(skipna=True)
+  #    .sort_values(ascending=False)
+   #   .rename('media')
+    #  .reset_index()
+    #  .rename(columns={'index':'pergunta'})
+#)
+
+        # --- Gráfico: Ranking geral (Top N) ---
+
+
+max_n = int(min(40, len(ranking_geral)))
+n = st.slider("Top N para o gráfico (ranking geral)", 5, max_n, min(40, max_n))
+
+#plot_data = ranking_geral.head(n).iloc[::-1]  # inverte p/ barh de cima p/ baixo
+#fig, ax = plt.subplots(figsize=(10, 0.5*n + 1))
+#ax.barh(plot_data['pergunta'], plot_data['media'])
+#ax.set_xlabel("Média")
+#ax.set_ylabel("Pergunta")
+#ax.set_title("Ranking geral - Top N")
+#plt.tight_layout()
+#st.pyplot(fig)
+
+
+# Seleciona o top N e inverte para manter ordem visual
+plot_data = ranking_geral.head(n).iloc[::-1].reset_index(drop=True)
+
+# Cria o gráfico em Altair
+chart = (
+    alt.Chart(plot_data)
+    .mark_bar()
+    .encode(
+        x=alt.X("media:Q", title="Média"),
+        y=alt.Y("pergunta:N", sort='-x', title="Pergunta"),
+        tooltip=["pergunta", "media"]
+    )
+    .properties(
+        title=f"Ranking geral - Top {n}",
+        width=700,
+        height=30 * n  # altura proporcional ao número de perguntas
+    )
+)
+
+st.altair_chart(chart, use_container_width=True)
 
 
 
@@ -272,32 +348,9 @@ for chave, titulo in [('squadtime', 'SquadTime'), ('papel', 'Papel'), ('funcao',
         st.altair_chart(bars + labels, use_container_width=True)
 
 
-st.subheader("🏆 Ranking geral (média por linhagerencia, squadtime, papel, funcao)")
-ranking_geral = (
-    df[cols].mean(skipna=True)
-      .sort_values(ascending=False)
-      .rename('media')
-      .reset_index()
-      .rename(columns={'index':'pergunta'})
-)
-
-        # --- Gráfico: Ranking geral (Top N) ---
-
-
-max_n = int(min(30, len(ranking_geral)))
-n = st.slider("Top N para o gráfico (ranking geral)", 5, max_n, min(10, max_n))
-
-plot_data = ranking_geral.head(n).iloc[::-1]  # inverte p/ barh de cima p/ baixo
-fig, ax = plt.subplots(figsize=(10, 0.5*n + 1))
-ax.barh(plot_data['pergunta'], plot_data['media'])
-ax.set_xlabel("Média")
-ax.set_ylabel("Pergunta")
-ax.set_title("Ranking geral - Top N")
-plt.tight_layout()
-st.pyplot(fig)
-
 
 # --- Gráfico: Ranking por grupo (perguntas) ---
+st.subheader("🏆 Analise dos Subgrupos Especificos")
 keys_disp = [k for k in ['linhagerencia', 'squadtime', 'papel', 'funcao'] if k in df.columns]
 if keys_disp:
     c1, c2 = st.columns(2)
@@ -386,33 +439,28 @@ if 'matricula' in df.columns and len(valores) > 0:
 
 ###############################################################################################
 
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
 
-
-
-df.columns = df.columns.str.strip().str.lower()
+#df.columns = df.columns.str.strip().str.lower()
 
 # Identifica colunas de perguntas
-cols = [c for c in df.columns if str(c).lstrip().startswith('[')]
-for c in cols:
-    df[c] = pd.to_numeric(df[c], errors='coerce')
+#cols = [c for c in df.columns if str(c).lstrip().startswith('[')]
+#for c in cols:
+ #   df[c] = pd.to_numeric(df[c], errors='coerce')
 
 # Seleção da pergunta
-pergunta = st.selectbox("🔍 Selecione a pergunta", cols)
+#pergunta = st.selectbox("🔍 Selecione a pergunta", cols)
 
 # Agrupadores
-agrupadores = ['linhagerencia', 'squadtime', 'papel', 'funcao']
+#agrupadores = ['linhagerencia', 'squadtime', 'papel', 'funcao']
 
 # Geração dos rankings
-for chave in agrupadores:
-    if chave in df.columns:
-        df[chave] = df[chave].fillna(f'Sem {chave}').astype(str).str.strip()
-        media_por_grupo = df.groupby(chave)[pergunta].mean().sort_values(ascending=False)
+#for chave in agrupadores:
+#    if chave in df.columns:
+#        df[chave] = df[chave].fillna(f'Sem {chave}').astype(str).str.strip()
+#        media_por_grupo = df.groupby(chave)[pergunta].mean().sort_values(ascending=False)
 
-        st.subheader(f"📌 Média da pergunta '{pergunta}' por {chave}")
-        st.dataframe(media_por_grupo.reset_index().rename(columns={pergunta: 'média'}), use_container_width=True)
+        #st.subheader(f"📌 Média da pergunta '{pergunta}' por {chave}")
+        #st.dataframe(media_por_grupo.reset_index().rename(columns={pergunta: 'média'}), use_container_width=True)
 
         # Gráfico
        # fig, ax = plt.subplots(figsize=(10, 0.5 * len(media_por_grupo) + 1))
@@ -538,3 +586,68 @@ st.altair_chart(heat, use_container_width=True)
 
 #st.subheader(f"🏆 Top {TOP_N} perguntas por cluster")
 #st.dataframe(top_por_cluster, use_container_width=True)
+
+
+st.header("📊 Quantidade de Respondentes por Categoria")
+
+
+
+# Lista das colunas de interesse
+colunas_categorias = ["linhagerencia", "squadtime", "papel", "funcao"]
+
+for coluna in colunas_categorias:
+    st.subheader(f"🔹 {coluna.capitalize()}")
+
+    # Remove duplicatas mantendo apenas 1 entrada por matrícula + coluna analisada
+    df_unico = df[["matricula", coluna]].drop_duplicates()
+
+    # Conta o número de matrículas únicas por categoria
+    contagem = df_unico[coluna].value_counts(dropna=False).reset_index()
+    contagem.columns = [coluna, "Quantidade de Respondentes Únicos"]
+
+    # Exibe a contagem em tabela
+    st.dataframe(contagem, use_container_width=True)
+    
+    
+    import altair as alt
+
+st.header("📊 Quantidade de Respondentes Únicos por Categoria")
+
+# Lista de categorias que queremos contar
+colunas_categorias = ["linhagerencia", "squadtime", "papel", "funcao"]
+
+for coluna in colunas_categorias:
+    st.subheader(f"🔹 {coluna.capitalize()}")
+
+    # Remove duplicatas de mesma matrícula em cada categoria
+    df_unico = df[["matricula", coluna]].drop_duplicates()
+
+    # Conta valores únicos por categoria
+    contagem = df_unico[coluna].value_counts(dropna=False).reset_index()
+    contagem.columns = [coluna, "Quantidade"]
+
+    # Exibe total de respondentes únicos
+    total_unicos = df_unico["matricula"].nunique()
+    st.markdown(f"**Total de respondentes únicos nesta categoria:** {total_unicos}")
+
+    # Tabela com as contagens por valor
+    st.dataframe(contagem, use_container_width=True)
+
+    # Gráfico Altair com barras ordenadas
+    grafico = (
+        alt.Chart(contagem)
+        .mark_bar()
+        .encode(
+            x=alt.X("Quantidade:Q", title="Quantidade de Respondentes"),
+            y=alt.Y(f"{coluna}:N", sort='-x', title=coluna.capitalize()),
+            tooltip=["Quantidade", coluna]
+        )
+        .properties(
+            width=600,
+            height=300,
+            title=f"Distribuição de Respondentes Únicos por {coluna.capitalize()}"
+        )
+    )
+
+    st.altair_chart(grafico, use_container_width=True)
+
