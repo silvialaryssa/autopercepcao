@@ -609,31 +609,34 @@ for coluna in colunas_categorias:
     st.dataframe(contagem, use_container_width=True)
     
     
-    import altair as alt
+
 
 st.header("📊 Quantidade de Respondentes Únicos por Categoria")
+st.subheader("Cuidado ao analisar essas categorias pois uma matricula pode estar em mais de uma categoria por isso é importante considerar isso na interpretação dos dados.")
 
-# Lista de categorias que queremos contar
 colunas_categorias = ["linhagerencia", "squadtime", "papel", "funcao"]
 
 for coluna in colunas_categorias:
     st.subheader(f"🔹 {coluna.capitalize()}")
 
-    # Remove duplicatas de mesma matrícula em cada categoria
+    # Remover duplicatas de matrícula + categoria
     df_unico = df[["matricula", coluna]].drop_duplicates()
 
-    # Conta valores únicos por categoria
+    # Contagem por valor da categoria
     contagem = df_unico[coluna].value_counts(dropna=False).reset_index()
     contagem.columns = [coluna, "Quantidade"]
 
-    # Exibe total de respondentes únicos
+    # Total de respondentes únicos (considerando colunas nulas também)
     total_unicos = df_unico["matricula"].nunique()
-    st.markdown(f"**Total de respondentes únicos nesta categoria:** {total_unicos}")
+    total_respostas_categoria = contagem["Quantidade"].sum()
 
-    # Tabela com as contagens por valor
+    st.markdown(f"**Total de respondentes únicos nesta categoria:** {total_unicos}")
+    st.markdown(f"**Soma da coluna Quantidade:** {total_respostas_categoria}")
+
+    # Exibe tabela
     st.dataframe(contagem, use_container_width=True)
 
-    # Gráfico Altair com barras ordenadas
+    # Gráfico
     grafico = (
         alt.Chart(contagem)
         .mark_bar()
@@ -650,4 +653,3 @@ for coluna in colunas_categorias:
     )
 
     st.altair_chart(grafico, use_container_width=True)
-
