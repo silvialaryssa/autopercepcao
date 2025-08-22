@@ -373,7 +373,7 @@ if keys_disp:
             )
 
             st.markdown(f"### 📊 {chave}: **{valor}** — ranking de perguntas")
-            n2 = min(15, len(medias))
+            n2 = min(40, len(medias))
             fig2, ax2 = plt.subplots(figsize=(10, 0.5*n2 + 1))
             plot2 = medias.head(n2).iloc[::-1]
             ax2.barh(plot2['pergunta'], plot2['media'])
